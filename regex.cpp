@@ -1,4 +1,4 @@
-// regex.cpp
+﻿// regex.cpp
 #include "regex.h"
 #include <stack>
 #include <queue>
@@ -12,7 +12,7 @@ const char LITERAL_BACKSLASH = '\x03';   // marks escaped '\'
 namespace REGEX {
     // Defualt constructor
     Regex::Regex() : start(nullptr), accept(nullptr) {
-        // Constructor body is empty � initializes state pointers
+        // Constructor body is empty — initializes state pointers
     }
 
     // Public methods
@@ -109,22 +109,19 @@ namespace REGEX {
             }
             else if (c == ')') {
                 while (!ops.empty() && ops.top() != '(') {
-                    output += ops.top();
-                    ops.pop();
+                    output += ops.top(); ops.pop();
                 }
                 ops.pop(); // pop '('
             }
             else if (c == CONCAT_OP || c == '*' || c == '+' || c == '|') {
                 while (!ops.empty() && precedence(ops.top()) >= precedence(c)) {
-                    output += ops.top();
-                    ops.pop();
+                    output += ops.top(); ops.pop();
                 }
                 ops.push(c);
             }
             else {
                 while (!ops.empty() && precedence(ops.top()) >= precedence(c)) {
-                    output += ops.top();
-                    ops.pop();
+                    output += ops.top(); ops.pop();
                 }
                 ops.push(c);
             }
@@ -197,7 +194,28 @@ namespace REGEX {
                 st.push({ s, accept });
             }
         }
-        return st.top();
+        // Now take the top of the stack as the core NFA
+        NFA core = st.top(); st.pop();
+
+        // Build a `.*` prefix NFA
+        State* starStart = new_state(0);
+        State* starAccept = new_state(0);
+
+        State* dotState = new_state(0);
+        dotState->transition = '.';            // match any character
+        dotState->out1 = starStart;            // loop back
+
+        starStart->transition = 0;             // ε
+        starStart->out1 = dotState;
+        starStart->out2 = starAccept;          // ε path to next
+
+        // Connect `.*` prefix to actual core NFA
+        starAccept->transition = 0;
+        starAccept->out1 = core.start;
+
+        return { starStart, core.accept };
+
+        //return st.top();
     }
 
     void Regex::addEpsilon(State* s, std::set<State*>& states) {
@@ -241,6 +259,8 @@ namespace REGEX {
                 }
             }
             currStates = nextStates;
+
+            if (currStates.count(nfa.accept)) return true; // Early exit if any substring matched
         }
 
         return currStates.count(nfa.accept) > 0;
