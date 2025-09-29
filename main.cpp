@@ -55,8 +55,6 @@ int main(int argc, char* argv[]) {
     std::string pattern = std::string(argv[2]);
     REGEX::NFA matcher = regex.compile(pattern);
 
-    std::string input = "Brooklyn";
-
 
 
 
